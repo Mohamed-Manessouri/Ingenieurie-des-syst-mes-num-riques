@@ -1,0 +1,168 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.STD_LOGIC_ARITH.ALL;
+use IEEE.STD_LOGIC_UNSIGNED.ALL;
+ 
+--  Uncomment the following lines to use the declarations that are
+--  provided for instantiating Xilinx primitive components.
+--library UNISIM;
+--use UNISIM.VComponents.all;
+entity uart_tx is
+    Port ( 
+        TXD     : out std_logic;            
+        CLK     : in  std_logic;                                --Master Clock = 50MHz
+        DBIN    : in  std_logic_vector (7 downto 0);    --Data Bus in
+        RST : in  std_logic);   --Master Reset
+end uart_tx;
+ 
+architecture Behavioral of uart_tx is
+------------------------------------------------------------------------
+-- Component Declarations
+------------------------------------------------------------------------
+ 
+------------------------------------------------------------------------
+--  Local Type Declarations
+------------------------------------------------------------------------
+ 
+    type tstate is (
+        sttIdle,            --Idle state
+        sttTransfer,    --Move data into shift register
+        sttShift            --Shift out data
+        );
+------------------------------------------------------------------------
+-- Signal Declarations
+------------------------------------------------------------------------
+    constant baudDivide : std_logic_vector(7 downto 0) := "10100011";   --Baud Rate dividor, set now for a rate of 9600.
+                                                                                                --Found by dividing 50MHz by 9600 and 16.
+    signal tfReg    :  std_logic_vector(7 downto 0);                                --Transfer holding register
+    signal tfSReg  :  std_logic_vector(10 downto 0)     := "11111111111";   --Transfer shift register
+    signal clkDiv   :  std_logic_vector(8 downto 0) := "000000000";     --used for rClk
+    signal rClkDiv :  std_logic_vector(3 downto 0)  := "0000";              --used for tClk
+ 
+    signal tfCtr    :  std_logic_vector(3 downto 0) := "0000";              --used to delay in transfer
+    signal tClk :  std_logic;                                   --Transfering Clock
+    signal rClk :  std_logic := '0';                            --Receiving Clock
+    
+    signal load :  std_logic := '0';
+    signal shift    :  std_logic := '0';
+    signal par  :  std_logic;
+   signal tClkRST   :  std_logic := '0';
+ 
+    signal sttCur  :  tstate := sttIdle;                    --Current state in the Transfer state machine
+    signal sttNext :  tstate;                                   --Next state in the Transfer staet machine
+    
+------------------------------------------------------------------------
+-- Module Implementation
+------------------------------------------------------------------------
+ 
+begin
+    tfReg <= DBIN;
+    par <=  not ( ((tfReg(0) xor tfReg(1)) xor (tfReg(2) xor tfReg(3))) xor ((tfReg(4) xor tfReg(5)) xor (tfReg(6) xor tfReg(7))) );
+ 
+--Clock Dividing Functions--
+ 
+    process (CLK, clkDiv)                               --set up clock divide for rClk
+        begin
+            if (Clk = '1' and Clk'event) then
+                if (clkDiv = baudDivide) then
+                    clkDiv <= "000000000";
+                else
+                    clkDiv <= clkDiv +1;
+                end if;
+            end if;
+        end process;
+ 
+    process (clkDiv, rClk, CLK)                     --Define rClk
+    begin
+        if CLK = '1' and CLK'Event then
+            if clkDiv = baudDivide then
+                rClk <= not rClk;
+            else
+                rClk <= rClk;
+            end if;
+        end if;
+    end process;    
+ 
+    process (rClk)                                       --set up clock divide for tClk
+        begin
+            if (rClk = '1' and rClk'event) then
+                rClkDiv <= rClkDiv +1;
+            end if;
+        end process;
+ 
+    tClk <= rClkDiv(3); 
+    
+    process (tClk, tClkRST)                             --set up a counter based on tClk
+        begin
+            if (tClk = '1' and tClk'event) then
+                if tClkRST = '1' then
+                    tfCtr <= "0000";
+                else
+                    tfCtr <= tfCtr +1;
+                end if;
+            end if;
+        end process;
+ 
+    
+ 
+    --This process loads and shifts out the transfer shift register--
+    process (load, shift, tClk, tfSReg)
+        begin
+            TXD <= tfsReg(0);
+            if tClk = '1' and tClk'Event then
+                if load = '1' then
+                    tfSReg (10 downto 0) <= ('1' & par & tfReg(7 downto 0) &'0');
+                end if;
+                if shift = '1' then
+                                  
+                    tfSReg (10 downto 0) <= ('1' & tfSReg(10 downto 1));
+                end if;
+            end if;
+        end process;
+ 
+    --  Transfer State Machine--
+    process (tClk, RST)
+        begin
+            if (tClk = '1' and tClk'Event) then
+                if RST = '1' then
+                    sttCur <= sttIdle;
+                else
+                    sttCur <= sttNext;
+                end if;
+            end if;
+        end process;
+        
+    --  This process generates the sequence of steps needed transfer the data--
+    process (sttCur, tfCtr, tfReg, tclk)
+        begin          
+ 
+            case sttCur is
+            
+                when sttIdle =>
+                    tClkRST <= '0';
+                    shift <= '0';
+                    load <= '0';
+                    sttNext <= sttTransfer;
+                    
+                    
+ 
+                when sttTransfer => 
+                    shift <= '0';
+                    load <= '1';
+                    tClkRST <= '1';     
+                    sttNext <= sttShift;
+                    
+ 
+                when sttShift =>
+                    shift <= '1';
+                    load <= '0';
+                    tClkRST <= '0';
+                    if tfCtr = "1100" then
+                        sttNext <= sttIdle;
+                    else
+                        sttNext <= sttShift;
+                    end if;
+            end case;
+        end process;                            
+            
+end Behavioral;

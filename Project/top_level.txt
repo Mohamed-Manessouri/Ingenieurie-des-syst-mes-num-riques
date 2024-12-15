@@ -1,0 +1,65 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+ 
+-- Uncomment the following library declaration if using
+-- arithmetic functions with Signed or Unsigned values
+--use IEEE.NUMERIC_STD.ALL;
+ 
+-- Uncomment the following library declaration if instantiating
+-- any Xilinx primitives in this code.
+--library UNISIM;
+--use UNISIM.VComponents.all;
+ 
+entity main_i2c is
+port(
+     clk_50    : IN STD_LOGIC;          --system clock
+     SDA       : INOUT  STD_LOGIC;     --serial data output of i2c bus
+    SCL       : INOUT  STD_LOGIC;       --serial clock output of i2c bus
+     LEDS      : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
+     TXD          : OUT    std_logic);      -- RS232 transmitted serial data
+                     
+end main_i2c;
+ 
+architecture Behavioral of main_i2c is
+    signal reset           :  STD_LOGIC := '1';                    --active low reset
+    signal enable          :  STD_LOGIC ;                    --latch in command
+     signal RST                 : std_logic := '0';
+    signal slave_addr      :  STD_LOGIC_VECTOR(6 DOWNTO 0); --address of target slave
+     signal slave_reg_addr  :  STD_LOGIC_VECTOR(6 DOWNTO 0); --address of target slave
+    signal rw              :  STD_LOGIC;                    --'0' is write, '1' is read
+    signal data_to_write   :  STD_LOGIC_VECTOR(7 DOWNTO 0); --data to write to slave
+     signal data_to_read    :  STD_LOGIC_VECTOR(7 DOWNTO 0); --data to write to slave
+    signal busy            :  STD_LOGIC:='0';                    --indicates transaction in progress
+    signal data_rd         :  STD_LOGIC_VECTOR(7 DOWNTO 0); --data read from slave
+    signal ack_error       :  STD_LOGIC;                    --flag if improper acknowledge from slave
+     
+--signals related to uart tx
+signal dbInSig  :   std_logic_vector(7 downto 0);
+ 
+begin
+ 
+master: entity work.i2c_master(logic)
+          port map(clk_50,reset,enable,slave_addr,slave_reg_addr,rw,data_to_write,busy,data_to_read,ack_error,sda,LEDS,scl);
+uart : entity work.uart_tx(Behavioral)
+        port map(TXD,clk_50,dbInSig,RST);   
+process (clk_50,busy)
+begin
+if clk_50'EVENT AND clk_50 = '1' THEN
+IF busy = '0' THEN
+enable <= '1';
+--rw <= '0';
+slave_addr <= "1101000";
+slave_reg_addr <="1110101"; 
+else
+enable <= '0';
+end if;
+end if;
+end process;
+ 
+process (clk_50,data_to_read)
+begin
+if clk_50'EVENT AND clk_50 = '1' THEN
+dbInSig <= data_to_read;
+end if;
+end process; 
+end Behavioral;
