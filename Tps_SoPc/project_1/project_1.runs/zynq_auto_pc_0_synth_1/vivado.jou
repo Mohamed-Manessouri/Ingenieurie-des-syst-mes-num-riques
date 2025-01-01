@@ -1,0 +1,13 @@
+#-----------------------------------------------------------
+# Vivado v2022.1 (64-bit)
+# SW Build 3526262 on Mon Apr 18 15:48:16 MDT 2022
+# IP Build 3524634 on Mon Apr 18 20:55:01 MDT 2022
+# Start of session at: Sun Dec 15 12:48:32 2024
+# Process ID: 7036
+# Current directory: C:/Users/moman/OneDrive/Documents/Education/etudeAcademique/project_1/project_1.runs/zynq_auto_pc_0_synth_1
+# Command line: vivado.exe -log zynq_auto_pc_0.vds -product Vivado -mode batch -messageDb vivado.pb -notrace -source zynq_auto_pc_0.tcl
+# Log file: C:/Users/moman/OneDrive/Documents/Education/etudeAcademique/project_1/project_1.runs/zynq_auto_pc_0_synth_1/zynq_auto_pc_0.vds
+# Journal file: C:/Users/moman/OneDrive/Documents/Education/etudeAcademique/project_1/project_1.runs/zynq_auto_pc_0_synth_1\vivado.jou
+# Running On: DESKTOP-FOHSMP7, OS: Windows, CPU Frequency: 2496 MHz, CPU Physical cores: 8, Host memory: 16948 MB
+#-----------------------------------------------------------
+source zynq_auto_pc_0.tcl -notrace
